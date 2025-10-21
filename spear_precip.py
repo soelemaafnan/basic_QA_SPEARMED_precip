@@ -7,42 +7,41 @@ This version prints real-time updates to the terminal as files are completed."""
 import os
 import glob
 import logging
-import time # Import the time module
+import time
 from datetime import timedelta
 import netCDF4
 import numpy as np
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
+import yaml
 
 # Dask imports
 import dask
 from dask.distributed import Client, progress
 
-# Configurations
-CONFIG = {
-    "input_directory": "/data/2/GFDL-LARGE-ENSEMBLES/TFTEST/SPEAR_c192_o1_Scen_SSP585_IC2011_K50/",
-    "output_directory": "outputs",
-    "log_file": "output.log",
-    "variable_name": "precip",
-    "time_dim": "time",
-    "lat_dim": "lat",
-    "lon_dim": "lon",
-    "threshold": 500.0,
-    "dpi": 150,
-    "cmap": "Blues",
-    "figure_size": (12, 8),
-}
+# Get the absolute path of the directory where this script is located
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_PATH = os.path.join(SCRIPT_DIR, 'config.yaml')
+
+with open(CONFIG_PATH, 'r') as f:
+    CONFIG = yaml.safe_load(f)
+
+CONFIG['output_directory'] = os.path.join(SCRIPT_DIR, CONFIG['output_directory'])
+CONFIG['log_file'] = os.path.join(SCRIPT_DIR, CONFIG['log_file'])
+# --- End of Configuration Loading ---
+
 
 # The plotting function remains the same
 def create_alert_plot(data: np.ndarray, lons: np.ndarray, lats: np.ndarray, date: object, filepath: str, t_index: int) -> None:
     """Generates and saves a plot for a specific timestep when a high value is detected."""
     try:
         precip_total_mm = data * 21600
-        fig = plt.figure(figsize=CONFIG["figure_size"])
+        fig = plt.figure(figsize=CONFIG['plot_settings']["figure_size"])
         ax = plt.axes(projection=ccrs.Robinson())
         ax.set_global()
         mesh = ax.pcolormesh(
-            lons, lats, precip_total_mm, transform=ccrs.PlateCarree(), cmap=CONFIG["cmap"]
+            lons, lats, precip_total_mm, transform=ccrs.PlateCarree(),
+            cmap=CONFIG['plot_settings']["cmap"]
         )
         ax.coastlines()
         ax.gridlines(draw_labels=False)
@@ -59,7 +58,7 @@ def create_alert_plot(data: np.ndarray, lons: np.ndarray, lats: np.ndarray, date
         sanitized_path = basename.replace('.nc', '')
         plot_filename = f"ALERT_{sanitized_path}_timestep_{t_index:05d}.png"
         save_path = os.path.join(CONFIG["output_directory"], plot_filename)
-        plt.savefig(save_path, dpi=CONFIG["dpi"], bbox_inches='tight')
+        plt.savefig(save_path, dpi=CONFIG['plot_settings']["dpi"], bbox_inches='tight')
     except Exception as e:
         print(f"Error plotting {filepath} at timestep {t_index}: {e}")
     finally:
@@ -135,7 +134,7 @@ def main() -> None:
         level=logging.INFO,
         format='%(asctime)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S',
-        filemode='w'
+        file_mode='w'
     )
     
     print(f"\nAll processing complete. Writing results to '{CONFIG['log_file']}'...")
