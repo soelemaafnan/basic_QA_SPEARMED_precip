@@ -1,6 +1,6 @@
 # Configuration for the SPEAR rogue pixel checker
 
-input_directory: "/data/2/GFDL-LARGE-ENSEMBLES/TFTEST/SPEAR_c192_o1_Scen_SSP585_IC2011_K50/"
+input_directory: "/data/2/GFDL-LARGE-ENSEMBLES/TFTEST/SPEAR_c192_o1_Hist_AllForc_IC1921_K50/"
 output_directory: "outputs"
 log_file: "output.log"
 
@@ -9,7 +9,7 @@ time_dim: "time"
 lat_dim: "lat"
 lon_dim: "lon"
 
-threshold: 200.0
+threshold: 100.0
 
 plot_settings:
   dpi: 150
