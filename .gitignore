@@ -1,4 +1,21 @@
+# Ignore Data
 data/
-*.err
+*.nc
+*.zarr
+
+# Ignore System Logs & Slurm outputs
 *.out
-*.sl
+*.err
+logs/
+output.log
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Ignore local config (optional, but good practice if it contains local paths)
+# configs/config.yaml 
+
+# Ignore OS files
+.DS_Store

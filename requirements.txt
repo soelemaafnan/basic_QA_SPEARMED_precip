@@ -1,0 +1,10 @@
+numpy
+pandas
+matplotlib
+cartopy
+netcdf4
+xarray
+dask[distributed]
+pyyaml
+seaborn
+tqdm

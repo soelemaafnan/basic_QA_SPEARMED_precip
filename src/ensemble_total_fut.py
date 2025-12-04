@@ -8,7 +8,7 @@ from dask.distributed import Client, progress
 
 CONFIG = {
     "base_directory": "/data/2/GFDL-LARGE-ENSEMBLES/TFTEST/SPEAR_c192_o1_Scen_SSP585_IC2011_K50",
-    "output_csv": "ensemble_member_stats_fut.csv",
+    "output_csv": "ensemble_member_total_stats_fut.csv",
     "variable_name": "precip",
     "search_pattern": "pp_ens_*",
     "file_pattern": "**/*precip.nc"
@@ -26,8 +26,8 @@ def calculate_member_stats(member_path: str) -> dict:
         print(f"ERROR: No files found for {member_name}")
         return {
             "member": member_name,
-            "mean": "N/A",
-            "std_dev": "N/A",
+            "total_precip_mm": "N/A",
+            "std_dev_mm": "N/A",
             "error": "No files found"
         }
 
@@ -36,19 +36,25 @@ def calculate_member_stats(member_path: str) -> dict:
             
             var_data = ds[CONFIG['variable_name']]
             
-            mean_val_lazy = var_data.mean()
-            std_val_lazy = var_data.std()
+            # --- MODIFICATION IS HERE ---
+            # 1. Convert rate (kg/m2/s) to amount (kg/m2, or mm) per 6-hr timestep
+            precip_amount_per_step = var_data * 21600  # 6 hours * 60 min/hr * 60 sec/min
             
-            print(f"  [{member_name}] Calculating mean and std...")
-            mean_val, std_val = dask.compute(mean_val_lazy, std_val_lazy)
+            # 2. Lazily define calculations for total and std dev
+            total_precip_lazy = precip_amount_per_step.sum()
+            std_dev_lazy = precip_amount_per_step.std()
+            # --- END OF MODIFICATION ---
+            
+            print(f"  [{member_name}] Calculating total precip and std dev...")
+            total_val, std_val = dask.compute(total_precip_lazy, std_dev_lazy)
 
         duration = time.time() - start_time
         print(f"COMPLETED: {member_name} in {duration:.2f} seconds.")
         
         return {
             "member": member_name,
-            "mean": float(mean_val),
-            "std_dev": float(std_val),
+            "total_precip_mm": float(total_val),
+            "std_dev_mm": float(std_val),
             "error": None
         }
 
@@ -57,8 +63,8 @@ def calculate_member_stats(member_path: str) -> dict:
         print(f"ERROR: {member_name} failed after {duration:.2f}s. Reason: {e}")
         return {
             "member": member_name,
-            "mean": "N/A",
-            "std_dev": "N/A",
+            "total_precip_mm": "N/A",
+            "std_dev_mm": "N/A",
             "error": str(e)
         }
 
