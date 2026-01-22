@@ -99,9 +99,10 @@ def process_single_file(filepath: str) -> str:
 
             for t_index in range(num_timesteps):
                 data_slice = precip_var[t_index, :, :]
+                total_precip = data_slice * 21600
                 
                 # Check for threshold. netCDF4 handles FillValues automatically (masked array)
-                if np.any(data_slice > CONFIG["threshold"]):
+                if np.any(total_precip > CONFIG["threshold"]):
                     high_value_found_in_file = True
                     date = netCDF4.num2date(time_var[t_index], time_var.units, getattr(time_var, 'calendar', 'standard'))
                     

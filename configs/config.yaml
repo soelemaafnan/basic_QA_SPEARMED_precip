@@ -1,15 +1,15 @@
 # Configuration for the SPEAR rogue pixel checker
 
-input_directory: "/work/jlz/CMIP6_output/hist_ens_30/CMIP6_output/CMIP6/SPEAR/NOAA-GFDL/GFDL-SPEAR-MED/historical/r30i1p1f1/6hr/pr/gr3/v20251126/"
+input_directory: "/data/2/GFDL-LARGE-ENSEMBLES/TFTEST/SPEAR_c192_o1_Hist_AllForc_IC1921_K50/"
 output_directory: "outputs"
 log_file: "output.log"
 
-variable_name: "pr"
+variable_name: "precip"
 time_dim: "time"
 lat_dim: "lat"
 lon_dim: "lon"
 
-threshold: 100.0
+threshold: 600.0
 
 plot_settings:
   dpi: 150
