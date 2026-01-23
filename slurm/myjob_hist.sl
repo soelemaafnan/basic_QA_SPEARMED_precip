@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH -A gfdl_a
-#SBATCH -J cmor
+#SBATCH -J mean
 #SBATCH -o %x_%j.out
 #SBATCH -e %x_%j.err
 #SBATCH -p analysis
-#SBATCH -t 12:00:00
+#SBATCH -t 48:00:00
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4
@@ -24,10 +24,10 @@ echo "--- JOB ENVIRONMENT ---"
 echo "Job is running in directory: $(pwd)"
 echo "Python executable: $(which python)"
 echo "Checking visibility of data directory:"
-ls -ld /work/jlz/CMIP6_output/hist_ens_30/CMIP6_output/CMIP6/SPEAR/NOAA-GFDL/GFDL-SPEAR-MED/historical/r30i1p1f1/6hr/pr/gr3/v20251126/
+ls -ld /data/2/GFDL-LARGE-ENSEMBLES/TFTEST/SPEAR_c192_o1_Hist_AllForc_IC1921_K50/
 echo "----------------------"
 
 # --- Execute the Python script ---
 echo "Starting Python Dask script..."
-python spear_precip.py
+python /nbhome/Soelem.Bhuiyan/basic_QA_SPEARMED_precip/src/mean_std_hist.py
 echo "Script finished."

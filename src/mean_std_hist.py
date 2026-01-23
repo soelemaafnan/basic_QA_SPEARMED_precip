@@ -4,14 +4,36 @@ import csv
 import time
 import dask
 import xarray as xr
+import yaml
 from dask.distributed import Client, progress
 
+# --- LOAD CONFIGURATION ---
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+CONFIG_PATH = os.path.join(PROJECT_ROOT, 'configs', 'config.yaml')
+
+if not os.path.exists(CONFIG_PATH):
+    # Fallback for running standalone
+    CONFIG_PATH = os.path.join(SCRIPT_DIR, 'config.yaml')
+
+try:
+    with open(CONFIG_PATH, 'r') as f:
+        YAML_CONFIG = yaml.safe_load(f)
+except FileNotFoundError:
+    print("Warning: config.yaml not found. Using defaults.")
+    YAML_CONFIG = {}
+
+# Construct internal CONFIG
+output_dir = YAML_CONFIG.get('output_directory', 'outputs')
+if not os.path.isabs(output_dir):
+    output_dir = os.path.join(PROJECT_ROOT, output_dir)
+
 CONFIG = {
-    "base_directory": "/data/2/GFDL-LARGE-ENSEMBLES/TFTEST/SPEAR_c192_o1_Hist_AllForc_IC1921_K50",
-    "output_csv": "ensemble_member_stats_hist_new.csv",
-    "variable_name": "precip",
+    "base_directory": YAML_CONFIG.get('input_directory', "/data/2/GFDL-LARGE-ENSEMBLES/TFTEST/SPEAR_c192_o1_Hist_AllForc_IC1921_K50"),
+    "output_csv": os.path.join(output_dir, "ensemble_member_total_stats.csv"),
+    "variable_name": YAML_CONFIG.get('variable_name', 'precip'),
     "search_pattern": "pp_ens_*",
-    "file_pattern": "**/*precip.nc"
+    "file_pattern": "**/*.nc" 
 }
 
 def calculate_member_stats(member_path: str) -> dict:
@@ -26,35 +48,45 @@ def calculate_member_stats(member_path: str) -> dict:
         print(f"ERROR: No files found for {member_name}")
         return {
             "member": member_name,
-            "mean": "N/A",
-            "std_dev": "N/A",
+            "total_precip_mm": "N/A",
+            "std_dev_mm": "N/A",
             "error": "No files found"
         }
 
     try:
-        with xr.open_mfdataset(file_list, parallel=True, chunks='auto', engine='netcdf4') as ds:
+        # FIX APPLIED HERE:
+        # 1. chunks={'time': 240}: Replaced 'auto' with fixed size to avoid object-dtype error.
+        # 2. decode_timedelta=False: Ignores the problematic 'average_DT' variable.
+        with xr.open_mfdataset(
+            file_list, 
+            parallel=True, 
+            chunks={'time': 240}, 
+            decode_timedelta=False, 
+            engine='netcdf4'
+        ) as ds:
             
+            if CONFIG['variable_name'] not in ds:
+                raise ValueError(f"Variable '{CONFIG['variable_name']}' not found")
+
             var_data = ds[CONFIG['variable_name']]
             
-            # --- MODIFICATION IS HERE ---
-            # Create a new DataArray where all values <= 0 are set to NaN
-            rainy_data = var_data.where(var_data > 0.01)
+            # Convert rate (kg/m2/s) to amount (kg/m2, or mm) per 6-hr timestep
+            precip_amount_per_step = var_data * 21600
             
-            # Calculate mean and std on the filtered data (NaNs are skipped by default)
-            mean_val_lazy = rainy_data.mean()
-            std_val_lazy = rainy_data.std()
-            # --- END OF MODIFICATION ---
+            # Lazily define calculations
+            total_precip_lazy = precip_amount_per_step.sum()
+            std_dev_lazy = precip_amount_per_step.std()
             
-            print(f"  [{member_name}] Calculating mean and std...")
-            mean_val, std_val = dask.compute(mean_val_lazy, std_val_lazy)
+            print(f"  [{member_name}] Calculating total precip and std dev...")
+            total_val, std_val = dask.compute(total_precip_lazy, std_dev_lazy)
 
         duration = time.time() - start_time
         print(f"COMPLETED: {member_name} in {duration:.2f} seconds.")
         
         return {
             "member": member_name,
-            "mean": float(mean_val),
-            "std_dev": float(std_val),
+            "total_precip_mm": float(total_val),
+            "std_dev_mm": float(std_val),
             "error": None
         }
 
@@ -63,12 +95,15 @@ def calculate_member_stats(member_path: str) -> dict:
         print(f"ERROR: {member_name} failed after {duration:.2f}s. Reason: {e}")
         return {
             "member": member_name,
-            "mean": "N/A",
-            "std_dev": "N/A",
+            "total_precip_mm": "N/A",
+            "std_dev_mm": "N/A",
             "error": str(e)
         }
 
 def main(client: Client):
+    # Ensure output directory exists
+    os.makedirs(os.path.dirname(CONFIG['output_csv']), exist_ok=True)
+
     search_path = os.path.join(CONFIG['base_directory'], CONFIG['search_pattern'])
     member_paths = sorted(glob.glob(search_path))
     
@@ -101,8 +136,6 @@ def main(client: Client):
 
 if __name__ == "__main__":
     client = Client()
-    print(f"Dask client started. Dashboard link (if accessible): {client.dashboard_link}")
-    
+    print(f"Dask client started. Dashboard link: {client.dashboard_link}")
     main(client)
-    
     client.close()
