@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -A gfdl_a
-#SBATCH -J spear_precip
+#SBATCH -J mean_fut
 #SBATCH -o %x_%j.out
 #SBATCH -e %x_%j.err
 #SBATCH -p analysis
@@ -29,5 +29,5 @@ echo "----------------------"
 
 # --- Execute the Python script ---
 echo "Starting Python Dask script..."
-python ensemble_total_fut.py
+python /nbhome/Soelem.Bhuiyan/basic_QA_SPEARMED_precip/src/mean_std_fut.py
 echo "Script finished."
