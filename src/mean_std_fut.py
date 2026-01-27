@@ -13,27 +13,36 @@ PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 CONFIG_PATH = os.path.join(PROJECT_ROOT, 'configs', 'config.yaml')
 
 if not os.path.exists(CONFIG_PATH):
-    # Fallback for running standalone
+    # Fallback for running standalone in src/
     CONFIG_PATH = os.path.join(SCRIPT_DIR, 'config.yaml')
 
-try:
-    with open(CONFIG_PATH, 'r') as f:
-        YAML_CONFIG = yaml.safe_load(f)
-except FileNotFoundError:
-    print("Warning: config.yaml not found. Using defaults.")
-    YAML_CONFIG = {}
+if not os.path.exists(CONFIG_PATH):
+    raise FileNotFoundError(f"Configuration file not found at: {CONFIG_PATH}")
 
-# Construct internal CONFIG
-output_dir = YAML_CONFIG.get('output_directory', 'outputs')
+with open(CONFIG_PATH, 'r') as f:
+    YAML_CONFIG = yaml.safe_load(f)
+
+# --- VALIDATE CONFIGURATION ---
+# Ensure essential keys exist in the YAML. We do not want hardcoded defaults for these.
+required_keys = ['input_directory', 'output_directory', 'variable_name']
+for key in required_keys:
+    if key not in YAML_CONFIG:
+        raise KeyError(f"Missing required configuration key: '{key}' in {CONFIG_PATH}")
+
+# Construct output path
+output_dir = YAML_CONFIG['output_directory']
 if not os.path.isabs(output_dir):
     output_dir = os.path.join(PROJECT_ROOT, output_dir)
 
+# --- INTERNAL CONFIG MAPPING ---
+# This dictionary maps the YAML keys to the specific keys used by the worker function.
 CONFIG = {
-    "base_directory": YAML_CONFIG.get('input_directory', "/data/2/GFDL-LARGE-ENSEMBLES/TFTEST/SPEAR_c192_o1_Scen_SSP585_IC2011_K50/"),
-    "output_csv": os.path.join(output_dir, "ensemble_member_total_stats.csv"),
-    "variable_name": YAML_CONFIG.get('variable_name', 'precip'),
-    "search_pattern": "pp_ens_*",
-    "file_pattern": "**/*.nc" 
+    "base_directory": YAML_CONFIG['input_directory'],
+    "output_csv": os.path.join(output_dir, "ensemble_member_total_mean_fut.csv"),
+    "variable_name": YAML_CONFIG['variable_name'],
+    # Optional patterns: Use YAML if provided, otherwise default to standard structure
+    "search_pattern": YAML_CONFIG.get('member_search_pattern', "pp_ens_*"),
+    "file_pattern": YAML_CONFIG.get('file_search_pattern', "**/*.nc") 
 }
 
 def calculate_member_stats(member_path: str) -> dict:
@@ -54,15 +63,14 @@ def calculate_member_stats(member_path: str) -> dict:
         }
 
     try:
-        # FIX APPLIED HERE:
-        # 1. chunks={'time': 240}: Replaced 'auto' with fixed size to avoid object-dtype error.
-        # 2. decode_timedelta=False: Ignores the problematic 'average_DT' variable.
         with xr.open_mfdataset(
             file_list, 
             parallel=True, 
             chunks={'time': 240}, 
             decode_timedelta=False, 
-            engine='netcdf4'
+            engine='netcdf4',
+            compat='override',
+            coords='minimal' 
         ) as ds:
             
             if CONFIG['variable_name'] not in ds:
@@ -103,6 +111,9 @@ def calculate_member_stats(member_path: str) -> dict:
 def main(client: Client):
     # Ensure output directory exists
     os.makedirs(os.path.dirname(CONFIG['output_csv']), exist_ok=True)
+
+    print(f"Reading data from: {CONFIG['base_directory']}")
+    print(f"Searching for members matching: {CONFIG['search_pattern']}")
 
     search_path = os.path.join(CONFIG['base_directory'], CONFIG['search_pattern'])
     member_paths = sorted(glob.glob(search_path))
