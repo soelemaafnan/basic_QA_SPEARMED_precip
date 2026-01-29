@@ -34,11 +34,14 @@ output_dir = YAML_CONFIG['output_directory']
 if not os.path.isabs(output_dir):
     output_dir = os.path.join(PROJECT_ROOT, output_dir)
 
+# Get the filename from config, default to 'ensemble_stats.csv' if not present
+output_filename = YAML_CONFIG.get('output_filename', 'ensemble_member_mean_stats.csv')
+
 # --- INTERNAL CONFIG MAPPING ---
 # This dictionary maps the YAML keys to the specific keys used by the worker function.
 CONFIG = {
     "base_directory": YAML_CONFIG['input_directory'],
-    "output_csv": os.path.join(output_dir, "ensemble_member_total_mean_fut.csv"),
+    "output_csv": os.path.join(output_dir, output_filename),
     "variable_name": YAML_CONFIG['variable_name'],
     # Optional patterns: Use YAML if provided, otherwise default to standard structure
     "search_pattern": YAML_CONFIG.get('member_search_pattern', "pp_ens_*"),
@@ -57,12 +60,15 @@ def calculate_member_stats(member_path: str) -> dict:
         print(f"ERROR: No files found for {member_name}")
         return {
             "member": member_name,
-            "total_precip_mm": "N/A",
+            "mean_precip_mm": "N/A",
             "std_dev_mm": "N/A",
             "error": "No files found"
         }
 
     try:
+        # FIX APPLIED:
+        # 1. compat='override': Fixes "conflicting values for variable" error.
+        # 2. coords='minimal': Optimization to prevent checking all coordinates.
         with xr.open_mfdataset(
             file_list, 
             parallel=True, 
@@ -78,23 +84,25 @@ def calculate_member_stats(member_path: str) -> dict:
 
             var_data = ds[CONFIG['variable_name']]
             
-            # Convert rate (kg/m2/s) to amount (kg/m2, or mm) per 6-hr timestep
-            precip_amount_per_step = var_data * 21600
+            # Convert rate (kg/m2/s) to mm/day
+            # 1 day = 24 * 60 * 60 = 86400 seconds
+            precip_rate_mm_day = var_data * 86400
             
             # Lazily define calculations
-            total_precip_lazy = precip_amount_per_step.sum()
-            std_dev_lazy = precip_amount_per_step.std()
+            # Calculates the mean daily rate across all timesteps/pixels
+            mean_precip_lazy = precip_rate_mm_day.mean()
+            std_dev_lazy = precip_rate_mm_day.std()
             
-            print(f"  [{member_name}] Calculating total precip and std dev...")
-            total_val, std_val = dask.compute(total_precip_lazy, std_dev_lazy)
+            print(f"  [{member_name}] Calculating mean precip (mm/day) and std dev...")
+            mean_val, std_val = dask.compute(mean_precip_lazy, std_dev_lazy)
 
         duration = time.time() - start_time
         print(f"COMPLETED: {member_name} in {duration:.2f} seconds.")
         
         return {
             "member": member_name,
-            "total_precip_mm": float(total_val),
-            "std_dev_mm": float(std_val),
+            "mean_precip_mm_day": float(mean_val), # Updated key for clarity
+            "std_dev_mm_day": float(std_val),      # Updated key for clarity
             "error": None
         }
 
@@ -103,8 +111,8 @@ def calculate_member_stats(member_path: str) -> dict:
         print(f"ERROR: {member_name} failed after {duration:.2f}s. Reason: {e}")
         return {
             "member": member_name,
-            "total_precip_mm": "N/A",
-            "std_dev_mm": "N/A",
+            "mean_precip_mm_day": "N/A",
+            "std_dev_mm_day": "N/A",
             "error": str(e)
         }
 
