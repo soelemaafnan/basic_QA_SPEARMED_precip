@@ -1,8 +1,8 @@
-# Configuration for the SPEAR rogue pixel checker
+# Configuration for the SPEAR basic QA
 
-input_directory: "/data/2/GFDL-LARGE-ENSEMBLES/TFTEST/SPEAR_c192_o1_Hist_AllForc_IC1921_K50/"
+input_directory: "/data/2/GFDL-LARGE-ENSEMBLES/TFTEST/SPEAR_c192_o1_Scen_SSP585_IC2011_K50/"
 output_directory: "outputs"
-output_filename: "ensemble_member_stats_hist.csv"
+output_filename: "ensemble_member_stats_fut.csv"
 log_file: "output_mean_fut.log"
 
 variable_name: "precip"

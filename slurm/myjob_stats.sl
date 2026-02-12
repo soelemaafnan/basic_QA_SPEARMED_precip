@@ -24,7 +24,7 @@ echo "--- JOB ENVIRONMENT ---"
 echo "Job is running in directory: $(pwd)"
 echo "Python executable: $(which python)"
 echo "Checking visibility of data directory:"
-ls -ld /data/2/GFDL-LARGE-ENSEMBLES/TFTEST/SPEAR_c192_o1_Hist_AllForc_IC1921_K50/
+ls -ld /data/2/GFDL-LARGE-ENSEMBLES/TFTEST/SPEAR_c192_o1_Scen_SSP585_IC2011_K50/
 echo "----------------------"
 
 # --- Execute the Python script ---
