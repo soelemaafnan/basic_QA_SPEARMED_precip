@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -A gfdl_a
-#SBATCH -J basicqa
+#SBATCH -J metadata
 #SBATCH -o %x_%j.out
 #SBATCH -e %x_%j.err
 #SBATCH -p analysis
@@ -24,10 +24,10 @@ echo "--- JOB ENVIRONMENT ---"
 echo "Job is running in directory: $(pwd)"
 echo "Python executable: $(which python)"
 echo "Checking visibility of data directory:"
-ls -ld /data/2/GFDL-LARGE-ENSEMBLES/TFTEST/SPEAR_c192_o1_Hist_AllForc_IC1921_K50/
+ls -ld /work/Jake.Zappala/CMIP6_output/
 echo "----------------------"
 
 # --- Execute the Python script ---
 echo "Starting Python Dask script..."
-python /nbhome/Soelem.Bhuiyan/basic_QA_SPEARMED_precip/src/spear_precip.py
+python /nbhome/Soelem.Bhuiyan/basic_QA_SPEARMED_precip/src/metadata_checker.py
 echo "Script finished."
