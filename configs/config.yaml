@@ -10,6 +10,7 @@ time_dim: "time"
 lat_dim: "lat"
 lon_dim: "lon"
 
+# Threshold is the total precipitation in 6 hour window, in mm
 threshold: 600.0
 
 plot_settings:

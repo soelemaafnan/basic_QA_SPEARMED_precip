@@ -64,14 +64,13 @@ EXPECTED_METADATA = {
         }
     },
     "globals": {
-        "experiment_id": "scenarioSSP5-85",
+        "experiment_id": ["scenarioSSP5-85", "historical"],
         "frequency": "6hr",
         "source_id": "GFDL-SPEAR-MED",
         "activity_id": "SPEAR"
     }
 }
 
-@dask.delayed
 def check_file_integrity(filepath: str) -> dict:
     """
     Worker function to open a single NetCDF file, read ONLY its metadata,
@@ -89,8 +88,15 @@ def check_file_integrity(filepath: str) -> dict:
             for key, expected_val in EXPECTED_METADATA["globals"].items():
                 if not hasattr(ds, key):
                     errors.append(f"Missing Global Attr: '{key}'")
-                elif getattr(ds, key) != expected_val:
-                    errors.append(f"Global '{key}' is '{getattr(ds, key)}', expected '{expected_val}'")
+                else:
+                    actual_val = getattr(ds, key)
+                    # If we expect one of multiple valid options (like experiment_id)
+                    if isinstance(expected_val, list):
+                        if actual_val not in expected_val:
+                            errors.append(f"Global '{key}' is '{actual_val}', expected one of {expected_val}")
+                    # If we expect a single exact match
+                    elif actual_val != expected_val:
+                        errors.append(f"Global '{key}' is '{actual_val}', expected '{expected_val}'")
 
             # Extract tracking_id for uniqueness check later
             tracking_id = getattr(ds, 'tracking_id', "MISSING_ID")
