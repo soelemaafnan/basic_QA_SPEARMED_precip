@@ -1,0 +1,24 @@
+# QA Configuration for Air Temperature (Maximum)
+
+input_directory: "/data/2/GFDL-LARGE-ENSEMBLES/TFTEST/SPEAR_c192_o1_Scen_SSP585_IC2011_K50/"
+output_directory: "results/figures/rogue_pixels_tmax"
+log_file: "qa_rogue_tmax_fut.log"
+
+variable_name: "t_ref_max"
+time_dim: "time"
+lat_dim: "lat"
+lon_dim: "lon"
+
+# Mathematical scaling
+conversion_factor: 1.0  # Temperature is already in Kelvin, no need to scale
+
+# Thresholds (in Kelvin)
+min_threshold: 180.0
+max_threshold: 343.0
+
+plot_settings:
+  dpi: 150
+  cmap: "hot"
+  figure_size: [10, 6]
+  cbar_label: "Max Daily Temperature (K)"
+  alert_title: "Anomalous Temperature Detected"

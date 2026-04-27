@@ -1,0 +1,25 @@
+# QA Configuration for Air Temperature (Minimum)
+
+input_directory: "/data/2/GFDL-LARGE-ENSEMBLES/TFTEST/SPEAR_c192_o1_Scen_SSP585_IC2011_K50/"
+output_directory: "results/figures/rogue_pixels_tmin"
+log_file: "qa_rogue_tmin_fut.log"
+
+# This automatically tells the script to look for *t_ref_min*.nc files
+variable_name: "t_ref_min"
+time_dim: "time"
+lat_dim: "lat"
+lon_dim: "lon"
+
+# Mathematical scaling
+conversion_factor: 1.0  
+
+# Thresholds (in Kelvin)
+# Example: Flag anything colder than 100K (-173C) or hotter than 320K (46C for a min temp)
+min_threshold: 100.0
+
+plot_settings:
+  dpi: 150
+  cmap: "Blues"          # Distinct from the 'hot' colormap used for tmax
+  figure_size: [10, 6]
+  cbar_label: "Min Daily Temperature (K)"
+  alert_title: "Anomalous Minimum Temperature Detected"
